@@ -1,0 +1,109 @@
+{
+	"name": "dataflowAssertExaaple",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"linkedService": {
+						"referenceName": "AzureBlobStorage1",
+						"type": "LinkedServiceReference"
+					},
+					"name": "sourceassert"
+				},
+				{
+					"linkedService": {
+						"referenceName": "AzureBlobStorage1",
+						"type": "LinkedServiceReference"
+					},
+					"name": "sourcedept"
+				}
+			],
+			"sinks": [
+				{
+					"linkedService": {
+						"referenceName": "AzureBlobStorage1",
+						"type": "LinkedServiceReference"
+					},
+					"name": "sink1"
+				}
+			],
+			"transformations": [
+				{
+					"name": "assert1"
+				},
+				{
+					"name": "derivedColumn1"
+				},
+				{
+					"name": "filtergoodrow"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          EmpID as integer,",
+				"          FirstName as string,",
+				"          LastName as string,",
+				"          Gender as string,",
+				"          Country as string,",
+				"          Dept as integer",
+				"     ),",
+				"     useSchema: false,",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false,",
+				"     format: 'delimited',",
+				"     container: 'adfdemo',",
+				"     folderPath: 'input',",
+				"     fileName: 'employee2G.csv',",
+				"     columnDelimiter: ',',",
+				"     escapeChar: '\\\\',",
+				"     quoteChar: '\\\"',",
+				"     columnNamesAsHeader: true) ~> sourceassert",
+				"source(output(",
+				"          DeptID as integer,",
+				"          Depname as string",
+				"     ),",
+				"     useSchema: false,",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false,",
+				"     format: 'delimited',",
+				"     container: 'adfdemo',",
+				"     folderPath: 'input',",
+				"     fileName: 'dept.csv',",
+				"     columnDelimiter: ',',",
+				"     escapeChar: '\\\\',",
+				"     quoteChar: '\\\"',",
+				"     columnNamesAsHeader: true) ~> sourcedept",
+				"sourceassert, sourcedept assert(expectTrue(or(equals(Gender, 'Female'),equals(Gender, 'Male')), false, 'assertGender'),",
+				"     expectUnique(EmpID, false, 'assertempID'),",
+				"     expectExists(Dept == DeptID, false, 'assertdeptexists')) ~> assert1",
+				"assert1 derive(IsErrosRow = isError(),",
+				"          isIncorrectRow = hasError('assertdeptexists')) ~> derivedColumn1",
+				"derivedColumn1 filter(IsErrosRow == false()) ~> filtergoodrow",
+				"filtergoodrow sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'delimited',",
+				"     container: 'adfdemo',",
+				"     folderPath: 'OUTPUT',",
+				"     columnDelimiter: ',',",
+				"     escapeChar: '\\\\',",
+				"     quoteChar: '\\\"',",
+				"     columnNamesAsHeader: true,",
+				"     partitionFileNames:['AssertOutput.csv'],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     mapColumn(",
+				"          EmpID,",
+				"          FirstName,",
+				"          LastName,",
+				"          Gender,",
+				"          Country,",
+				"          Dept",
+				"     ),",
+				"     partitionBy('hash', 1)) ~> sink1"
+			]
+		}
+	}
+}
